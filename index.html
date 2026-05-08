@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>GRFC O45 D2 · Player of the Match</title>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;500;600;700&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --gold: #f5c800;
+    --gold-dim: #f5c80044;
+    --black: #0d0d0d;
+    --dark: #141414;
+    --card: #181818;
+    --border: #2a2a2a;
+    --text: #f0f0f0;
+    --muted: #888;
+    --red: #c0392b;
+    --green: #1e8449;
+    --silver: #a8a8a8;
+    --bronze: #cd7f32;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body { background: var(--black); color: var(--text); font-family: 'Barlow', sans-serif; min-height: 100vh; overflow-x: hidden; }
+  h1,h2,h3,h4 { font-family: 'Oswald', sans-serif; letter-spacing: 1px; }
+
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: #111; }
+  ::-webkit-scrollbar-thumb { background: var(--gold); border-radius: 3px; }
+
+  /* HEADER */
+  header { background: linear-gradient(135deg, #0d0d0d 0%, #1a1200 100%); border-bottom: 3px solid var(--gold); position: sticky; top: 0; z-index: 100; }
+  .header-inner { max-width: 960px; margin: 0 auto; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .logo-area { display: flex; align-items: center; gap: 14px; }
+  .logo-text { line-height: 1; }
+  .logo-text h1 { font-size: clamp(18px, 4vw, 24px); color: var(--gold); text-shadow: 0 0 20px #f5c80066; }
+  .logo-text span { font-size: 10px; color: var(--muted); letter-spacing: 3px; text-transform: uppercase; font-family: 'Barlow', sans-serif; }
+  nav { display: flex; gap: 2px; flex-wrap: wrap; }
+  .nav-btn { background: none; border: none; border-bottom: 2px solid transparent; color: var(--muted); font-family: 'Oswald', sans-serif; font-size: 13px; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; padding: 6px 14px; transition: all 0.15s; }
+  .nav-btn:hover, .nav-btn.active { color: var(--gold); border-bottom-color: var(--gold); }
+
+  /* MAIN */
+  main { max-width: 960px; margin: 0 auto; padding: 24px 16px 60px; }
+
+  /* CARDS */
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 6px; padding: 20px; }
+  .card-gold { border-color: var(--gold-dim); }
+  .card-highlight { background: linear-gradient(135deg, #1a1200 0%, #181818 100%); border-color: #f5c80055; }
+
+  /* BUTTONS */
+  .btn { cursor: pointer; border: none; font-family: 'Oswald', sans-serif; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; transition: all 0.15s; border-radius: 3px; display: inline-flex; align-items: center; gap: 6px; }
+  .btn-gold { background: var(--gold); color: var(--black); padding: 10px 22px; font-size: 14px; }
+  .btn-gold:hover { background: #ffe040; transform: translateY(-1px); box-shadow: 0 4px 18px #f5c80055; }
+  .btn-dark { background: #1e1e1e; color: var(--gold); border: 1px solid #f5c80066; padding: 8px 16px; font-size: 13px; }
+  .btn-dark:hover { background: var(--gold); color: var(--black); }
+  .btn-red { background: var(--red); color: white; padding: 6px 13px; font-size: 12px; }
+  .btn-red:hover { background: #e74c3c; }
+  .btn-green { background: var(--green); color: white; padding: 7px 14px; font-size: 12px; }
+  .btn-green:hover { background: #27ae60; }
+  .btn-sm { padding: 5px 11px !important; font-size: 11px !important; }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none !important; }
+
+  /* INPUTS */
+  .input { background: #1c1c1c; border: 1px solid #333; color: var(--text); padding: 9px 13px; border-radius: 3px; font-family: 'Barlow', sans-serif; font-size: 14px; width: 100%; outline: none; transition: border 0.15s; }
+  .input:focus { border-color: var(--gold); }
+  select.input option { background: #1c1c1c; }
+
+  /* TAGS */
+  .tag { display: inline-block; padding: 3px 9px; border-radius: 2px; font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; font-family: 'Oswald', sans-serif; }
+  .tag-open { background: var(--green); color: white; }
+  .tag-closed { background: #444; color: #aaa; }
+  .tag-results { background: var(--gold); color: var(--black); }
+
+  /* SECTION TITLE */
+  .sec { font-size: 10px; letter-spacing: 2px; color: var(--muted); text-transform: uppercase; margin-bottom: 10px; font-family: 'Oswald', sans-serif; }
+
+  /* PLAYER GRID */
+  .player-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 6px; }
+  .player-btn { background: #1a1a1a; border: 2px solid #333; color: #ccc; padding: 8px 10px; border-radius: 4px; cursor: pointer; transition: all 0.12s; font-family: 'Barlow', sans-serif; font-size: 13px; text-align: left; width: 100%; }
+  .player-btn:hover { border-color: var(--gold); color: var(--gold); }
+  .player-btn.p1 { border-color: var(--gold); background: #2a220099; color: var(--gold); }
+  .player-btn.p2 { border-color: var(--silver); background: #22222299; color: var(--silver); }
+  .player-btn.p3 { border-color: var(--bronze); background: #1e150099; color: var(--bronze); }
+
+  /* PICK SLOTS */
+  .pick-slots { display: grid; gap: 8px; margin-bottom: 20px; }
+  .pick-slot { border: 2px dashed #2e2e2e; border-radius: 4px; padding: 11px 14px; display: flex; align-items: center; justify-content: space-between; min-height: 46px; transition: border-color 0.15s; }
+  .pick-slot.s1 { border-color: var(--gold); background: #2a220033; }
+  .pick-slot.s2 { border-color: var(--silver); background: #22222233; }
+  .pick-slot.s3 { border-color: var(--bronze); background: #1e150033; }
+  .pick-slot-label { font-size: 13px; color: #555; }
+  .pick-slot.filled .pick-slot-label { color: var(--text); }
+
+  /* RANK BADGES */
+  .rank { width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'Oswald', sans-serif; font-weight: 700; font-size: 15px; flex-shrink: 0; }
+  .rank-1 { background: var(--gold); color: var(--black); box-shadow: 0 0 16px #f5c80066; }
+  .rank-2 { background: var(--silver); color: var(--black); }
+  .rank-3 { background: var(--bronze); color: var(--black); }
+  .rank-4 { background: #222; color: #777; border: 1px solid #333; }
+  .rank-5 { background: #1a1a1a; color: #555; border: 1px solid #2a2a2a; }
+
+  /* TABLES */
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { background: #161616; color: var(--gold); padding: 9px 12px; text-align: left; font-size: 11px; letter-spacing: 1px; border-bottom: 2px solid var(--gold); font-family: 'Oswald', sans-serif; }
+  td { padding: 8px 12px; border-bottom: 1px solid #1e1e1e; color: #bbb; }
+  tr:hover td { background: #161616; }
+
+  /* MISC */
+  .err { color: #e74c3c; font-size: 13px; padding: 6px 0; }
+  .success-icon { font-size: 52px; display: block; text-align: center; margin-bottom: 12px; }
+  .divider { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .flex-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .spacer { margin-top: 16px; }
+  .loading { color: var(--muted); font-size: 14px; padding: 20px 0; text-align: center; }
+
+  /* SPINNER */
+  .spinner { display: inline-block; width: 18px; height: 18px; border: 2px solid #333; border-top-color: var(--gold); border-radius: 50%; animation: spin 0.7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* TOAST */
+  #toast { position: fixed; bottom: 24px; right: 24px; background: var(--gold); color: var(--black); font-family: 'Oswald', sans-serif; font-weight: 600; letter-spacing: 1px; padding: 12px 22px; border-radius: 4px; font-size: 14px; transform: translateY(80px); opacity: 0; transition: all 0.3s; z-index: 999; pointer-events: none; }
+  #toast.show { transform: translateY(0); opacity: 1; }
+
+  /* RESPONSIVE */
+  @media (max-width: 600px) {
+    .grid-2 { grid-template-columns: 1fr; }
+    .hide-sm { display: none !important; }
+    .player-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+  }
+
+  /* PAGE TRANSITIONS */
+  .page { animation: fadeIn 0.2s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+  /* HERO STRIPE */
+  .hero-stripe { background: repeating-linear-gradient(45deg, transparent, transparent 8px, #f5c8000a 8px, #f5c8000a 16px); }
+</style>
+</head>
+<body>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<!-- HEADER -->
+<header>
+  <div class="header-inner">
+    <div class="logo-area">
+      <svg width="48" height="48" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="50" cy="50" r="48" fill="#1a1a1a" stroke="#f5c800" stroke-width="2"/>
+        <ellipse cx="50" cy="52" rx="28" ry="26" fill="#e8820a"/>
+        <polygon points="25,30 18,14 35,26" fill="#e8820a"/><polygon points="75,30 82,14 65,26" fill="#e8820a"/>
+        <polygon points="26,29 20,17 33,26" fill="#f5c800" opacity="0.6"/><polygon points="74,29 80,17 67,26" fill="#f5c800" opacity="0.6"/>
+        <ellipse cx="50" cy="60" rx="16" ry="12" fill="#fde8c0"/>
+        <path d="M32 38 Q28 42 30 48" stroke="#1a1a1a" stroke-width="2.5" stroke-linecap="round"/>
+        <path d="M34 34 Q29 37 30 43" stroke="#1a1a1a" stroke-width="2" stroke-linecap="round"/>
+        <path d="M68 38 Q72 42 70 48" stroke="#1a1a1a" stroke-width="2.5" stroke-linecap="round"/>
+        <path d="M66 34 Q71 37 70 43" stroke="#1a1a1a" stroke-width="2" stroke-linecap="round"/>
+        <path d="M43 36 Q42 30 44 28" stroke="#1a1a1a" stroke-width="2" stroke-linecap="round"/>
+        <path d="M50 35 Q50 29 50 27" stroke="#1a1a1a" stroke-width="2" stroke-linecap="round"/>
+        <path d="M57 36 Q58 30 56 28" stroke="#1a1a1a" stroke-width="2" stroke-linecap="round"/>
+        <ellipse cx="40" cy="46" rx="5" ry="5.5" fill="#1a1a1a"/><ellipse cx="60" cy="46" rx="5" ry="5.5" fill="#1a1a1a"/>
+        <ellipse cx="40" cy="46" rx="3" ry="4" fill="#2d7a1f"/><ellipse cx="60" cy="46" rx="3" ry="4" fill="#2d7a1f"/>
+        <ellipse cx="40.5" cy="45" rx="1.5" ry="2" fill="#1a1a1a"/><ellipse cx="60.5" cy="45" rx="1.5" ry="2" fill="#1a1a1a"/>
+        <circle cx="41" cy="44" r="0.8" fill="white"/><circle cx="61" cy="44" r="0.8" fill="white"/>
+        <ellipse cx="50" cy="56" rx="3.5" ry="2.5" fill="#1a1a1a"/>
+        <path d="M47 58 Q50 62 53 58" stroke="#1a1a1a" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+        <line x1="30" y1="58" x2="45" y2="57" stroke="#fde8c0" stroke-width="1"/>
+        <line x1="30" y1="60" x2="45" y2="60" stroke="#fde8c0" stroke-width="1"/>
+        <line x1="55" y1="57" x2="70" y2="58" stroke="#fde8c0" stroke-width="1"/>
+        <line x1="55" y1="60" x2="70" y2="60" stroke="#fde8c0" stroke-width="1"/>
+      </svg>
+      <div class="logo-text">
+        <h1>GRFC O45 D2</h1>
+        <span>Player of the Match</span>
+      </div>
+    </div>
+    <nav id="nav"></nav>
+  </div>
+</header>
+
+<main id="app"><div class="loading"><span class="spinner"></span> Loading...</div></main>
+
+<script>
+// ── Supabase ─────────────────────────────────────────────────────────────────
+const SUPA_URL = "https://nykoxcohnrabdqnchiga.supabase.co";
+const SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im55a294Y29obnJhYmRxbmNoaWdhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgyMjAwMjQsImV4cCI6MjA5Mzc5NjAyNH0.G6RPpQXXH-PCXiONzo6EGcWV3v9DpFRzKdqfd7KH55o";
+const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
+
+// ── Players ───────────────────────────────────────────────────────────────────
+const PLAYERS = [
+  {id:1,first:"Aaron",last:"Jenkins"},{id:2,first:"Alan",last:"Cheek"},
+  {id:3,first:"Brett",last:"Pritchard"},{id:4,first:"Christopher",last:"Sjoblom"},
+  {id:5,first:"Dale",last:"Graham"},{id:6,first:"Daniel",last:"Johnston"},
+  {id:7,first:"Garrett",last:"Nelson"},{id:8,first:"Graham",last:"Southgate"},
+  {id:9,first:"Jason",last:"Cain"},{id:10,first:"Jason",last:"Owen"},
+  {id:11,first:"Jason",last:"Ponder"},{id:12,first:"Jon",last:"Hancock"},
+  {id:13,first:"Keiran",last:"Williams"},{id:14,first:"Mark",last:"Worland"},
+  {id:15,first:"Matt",last:"Jones"},{id:16,first:"Michael",last:"Goddard"},
+  {id:17,first:"Mike",last:"Jorge"},{id:18,first:"Nathan",last:"Johnson"},
+  {id:19,first:"Paul",last:"West"},{id:20,first:"Riyaz",last:"Jordan"},
+  {id:21,first:"Serge",last:"Hrouda"},{id:22,first:"Shamus",last:"Toomey"},
+  {id:23,first:"Simon",last:"Fisher"},{id:24,first:"Stephen",last:"Jones"},
+  {id:25,first:"Stuart",last:"Cullen"},{id:26,first:"Troy",last:"Dalton"},
+];
+const pName = id => { const p = PLAYERS.find(x=>x.id===id); return p ? `${p.first} ${p.last}` : "?"; };
+
+// ── State ─────────────────────────────────────────────────────────────────────
+const ADMIN_PW = "GRFC2024";
+let state = {
+  view: "home",
+  adminLoggedIn: false,
+  adminTab: "matches",
+  detailMatchId: null,
+  matches: [],
+  votes: [],           // all votes (admin only)
+  voterPlayerId: null,
+  voterFirst: "",
+  voterLast: "",
+  voterStep: 1,        // 1=identify, 2=pick
+  picks: [null,null,null],
+  voteSubmitted: false,
+  voteError: "",
+  newLabel: "",
+  newDate: "",
+  adminPw: "",
+  adminPwError: false,
+  resultsMatchId: null,
+  loading: false,
+};
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+let toastTimer;
+function toast(msg) {
+  const el = document.getElementById("toast");
+  el.textContent = msg; el.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove("show"), 2800);
+}
+
+// ── DB helpers ────────────────────────────────────────────────────────────────
+async function loadMatches() {
+  const { data } = await sb.from("matches").select("*").order("id", { ascending: false });
+  return data || [];
+}
+async function loadVotes(matchId) {
+  const q = sb.from("votes").select("*");
+  if (matchId) q.eq("match_id", matchId);
+  const { data } = await q;
+  return data || [];
+}
+async function createMatch(label, date) {
+  // close open ones first
+  await sb.from("matches").update({ status: "closed" }).eq("status", "open");
+  await sb.from("matches").insert({ label, date, status: "open" });
+}
+async function setMatchStatus(id, status) {
+  if (status === "open") await sb.from("matches").update({ status: "closed" }).eq("status", "open");
+  await sb.from("matches").update({ status }).eq("id", id);
+}
+async function deleteMatch(id) {
+  await sb.from("votes").delete().eq("match_id", id);
+  await sb.from("matches").delete().eq("id", id);
+}
+async function submitVoteDB(matchId, first, last, p1, p2, p3) {
+  const { error } = await sb.from("votes").insert({
+    match_id: matchId, voter_first: first, voter_last: last,
+    pick1_player_id: p1, pick2_player_id: p2, pick3_player_id: p3
+  });
+  return error;
+}
+async function hasVoted(matchId, first, last) {
+  const { data } = await sb.from("votes").select("id")
+    .eq("match_id", matchId)
+    .ilike("voter_first", first).ilike("voter_last", last);
+  return data && data.length > 0;
+}
+
+// ── Score calculation (prorated) ──────────────────────────────────────────────
+function computeScores(votes) {
+  const raw = {};
+  PLAYERS.forEach(p => raw[p.id] = 0);
+  votes.forEach(v => {
+    if (v.pick1_player_id) raw[v.pick1_player_id] = (raw[v.pick1_player_id]||0) + 3;
+    if (v.pick2_player_id) raw[v.pick2_player_id] = (raw[v.pick2_player_id]||0) + 2;
+    if (v.pick3_player_id) raw[v.pick3_player_id] = (raw[v.pick3_player_id]||0) + 1;
+  });
+  const totalVoters = votes.length;
+  const sumRaw = Object.values(raw).reduce((a,b)=>a+b,0);
+  const factor = sumRaw > 0 ? totalVoters / sumRaw : 0;
+  const pro = {};
+  Object.keys(raw).forEach(id => pro[id] = raw[id] * factor);
+  return { raw, pro };
+}
+
+// ── CSV Export ────────────────────────────────────────────────────────────────
+async function exportCSV() {
+  const matches = await loadMatches();
+  const allVotes = await loadVotes();
+  const rows = [["Match","Date","Status","Voter First","Voter Last","1st Pick (3pts)","2nd Pick (2pts)","3rd Pick (1pt)","Total Voters in Match"]];
+  for (const m of matches) {
+    const mv = allVotes.filter(v => v.match_id === m.id);
+    if (mv.length === 0) { rows.push([m.label, m.date, m.status, "(no votes)","","","","",0]); continue; }
+    mv.forEach(v => rows.push([
+      m.label, m.date, m.status, v.voter_first, v.voter_last,
+      v.pick1_player_id ? pName(v.pick1_player_id) : "",
+      v.pick2_player_id ? pName(v.pick2_player_id) : "",
+      v.pick3_player_id ? pName(v.pick3_player_id) : "",
+      mv.length
+    ]));
+  }
+  const csv = rows.map(r => r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(",")).join("\n");
+  const blob = new Blob([csv],{type:"text/csv"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a"); a.href=url; a.download="GRFC_O45_D2_Votes.csv"; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ── Navigate ──────────────────────────────────────────────────────────────────
+async function navigate(view, opts={}) {
+  state.view = view;
+  state.loading = true;
+  render();
+  if (view === "home" || view === "vote" || view === "results") {
+    state.matches = await loadMatches();
+  }
+  if (view === "admin" && state.adminLoggedIn) {
+    state.matches = await loadMatches();
+    if (state.adminTab === "detail" && state.detailMatchId) {
+      state.votes = await loadVotes(state.detailMatchId);
+    } else if (state.adminTab === "summary") {
+      state.votes = await loadVotes();
+    }
+  }
+  if (view === "vote") {
+    state.voteSubmitted = false; state.voteError = "";
+    state.picks = [null,null,null]; state.voterStep = 1;
+    state.voterPlayerId = null; state.voterFirst = ""; state.voterLast = "";
+  }
+  if (opts.resultsMatchId !== undefined) state.resultsMatchId = opts.resultsMatchId;
+  state.loading = false;
+  render();
+}
+
+// ── Render ────────────────────────────────────────────────────────────────────
+function render() {
+  renderNav();
+  const app = document.getElementById("app");
+  if (state.loading) { app.innerHTML = `<div class="loading"><span class="spinner"></span> Loading...</div>`; return; }
+
+  const openMatch = state.matches.find(m => m.status === "open");
+  const resultMatches = state.matches.filter(m => m.status === "results");
+
+  if (state.view === "home") app.innerHTML = renderHome(openMatch, resultMatches);
+  else if (state.view === "vote") app.innerHTML = renderVote(openMatch);
+  else if (state.view === "results") app.innerHTML = renderResults(resultMatches);
+  else if (state.view === "admin") app.innerHTML = renderAdmin(openMatch);
+
+  bindEvents();
+}
+
+function renderNav() {
+  const nav = document.getElementById("nav");
+  const openMatch = state.matches.find(m => m.status === "open");
+  const resultMatches = state.matches.filter(m => m.status === "results");
+  let html = `<button class="nav-btn ${state.view==='home'?'active':''}" onclick="navigate('home')">Home</button>`;
+  if (openMatch) html += `<button class="nav-btn ${state.view==='vote'?'active':''}" onclick="navigate('vote')">Vote</button>`;
+  if (resultMatches.length) html += `<button class="nav-btn ${state.view==='results'?'active':''}" onclick="navigate('results')">Results</button>`;
+  html += `<button class="nav-btn ${state.view==='admin'?'active':''}" onclick="navigate('admin')">Admin</button>`;
+  nav.innerHTML = html;
+}
+
+// ── HOME ──────────────────────────────────────────────────────────────────────
+function renderHome(openMatch, resultMatches) {
+  let html = `<div class="page">
+  <div style="text-align:center;padding:36px 0 28px;">
+    <svg width="80" height="80" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="50" cy="50" r="48" fill="#1a1a1a" stroke="#f5c800" stroke-width="2"/>
+      <ellipse cx="50" cy="52" rx="28" ry="26" fill="#e8820a"/>
+      <polygon points="25,30 18,14 35,26" fill="#e8820a"/><polygon points="75,30 82,14 65,26" fill="#e8820a"/>
+      <polygon points="26,29 20,17 33,26" fill="#f5c800" opacity="0.6"/><polygon points="74,29 80,17 67,26" fill="#f5c800" opacity="0.6"/>
+      <ellipse cx="50" cy="60" rx="16" ry="12" fill="#fde8c0"/>
+      <path d="M32 38 Q28 42 30 48" stroke="#1a1a1a" stroke-width="2.5" stroke-linecap="round"/>
+      <path d="M68 38 Q72 42 70 48" stroke="#1a1a1a" stroke-width="2.5" stroke-linecap="round"/>
+      <path d="M43 36 Q42 30 44 28" stroke="#1a1a1a" stroke-width="2" stroke-linecap="round"/>
+      <path d="M50 35 Q50 29 50 27" stroke="#1a1a1a" stroke-width="2" stroke-linecap="round"/>
+      <path d="M57 36 Q58 30 56 28" stroke="#1a1a1a" stroke-width="2" stroke-linecap="round"/>
+      <ellipse cx="40" cy="46" rx="5" ry="5.5" fill="#1a1a1a"/><ellipse cx="60" cy="46" rx="5" ry="5.5" fill="#1a1a1a"/>
+      <ellipse cx="40" cy="46" rx="3" ry="4" fill="#2d7a1f"/><ellipse cx="60" cy="46" rx="3" ry="4" fill="#2d7a1f"/>
+      <ellipse cx="40.5" cy="45" rx="1.5" ry="2" fill="#1a1a1a"/><ellipse cx="60.5" cy="45" rx="1.5" ry="2" fill="#1a1a1a"/>
+      <circle cx="41" cy="44" r="0.8" fill="white"/><circle cx="61" cy="44" r="0.8" fill="white"/>
+      <ellipse cx="50" cy="56" rx="3.5" ry="2.5" fill="#1a1a1a"/>
+      <path d="M47 58 Q50 62 53 58" stroke="#1a1a1a" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+      <line x1="30" y1="58" x2="45" y2="57" stroke="#fde8c0" stroke-width="1"/>
+      <line x1="30" y1="60" x2="45" y2="60" stroke="#fde8c0" stroke-width="1"/>
+      <line x1="55" y1="57" x2="70" y2="58" stroke="#fde8c0" stroke-width="1"/>
+      <line x1="55" y1="60" x2="70" y2="60" stroke="#fde8c0" stroke-width="1"/>
+    </svg>
+    <h2 style="font-size:clamp(24px,5vw,38px);color:var(--gold);margin-top:14px;letter-spacing:3px;text-shadow:0 0 30px #f5c80055;">Player of the Match</h2>
+    <p style="color:var(--muted);font-size:14px;margin-top:6px;">Vote for your top 3 performers · GRFC Over 45s Division 2</p>
+  </div>`;
+
+  if (openMatch) {
+    html += `<div class="card card-highlight" style="max-width:480px;margin:0 auto 28px;text-align:center;padding:28px;">
+      <span class="tag tag-open" style="margin-bottom:12px;display:inline-block;">Voting Open</span>
+      <h3 style="color:var(--gold);font-size:22px;margin-bottom:4px;">${openMatch.label}</h3>
+      <p style="color:var(--muted);font-size:13px;margin-bottom:20px;">${openMatch.date}</p>
+      <button class="btn btn-gold" style="font-size:15px;padding:13px 36px;" onclick="navigate('vote')">Cast Your Vote →</button>
+    </div>`;
+  } else {
+    html += `<div class="card" style="max-width:480px;margin:0 auto 28px;text-align:center;padding:24px;color:var(--muted);font-size:14px;">No match currently open for voting.</div>`;
+  }
+
+  if (resultMatches.length) {
+    html += `<div class="sec">Recent Results</div><div style="display:grid;gap:8px;">`;
+    resultMatches.slice(0,3).forEach(m => {
+      html += `<div class="card flex-row" style="justify-content:space-between;">
+        <div><span style="color:var(--gold);font-weight:600;">${m.label}</span> <span style="color:#555;font-size:13px;margin-left:8px;">${m.date}</span></div>
+        <button class="btn btn-dark btn-sm" onclick="navigate('results',{resultsMatchId:${m.id}})">View Top 5</button>
+      </div>`;
+    });
+    html += `</div>`;
+  }
+
+  html += `</div>`;
+  return html;
+}
+
+// ── VOTE ──────────────────────────────────────────────────────────────────────
+function renderVote(openMatch) {
+  if (!openMatch) return `<div class="page card" style="color:var(--muted);">No match is currently open for voting.</div>`;
+
+  if (state.voteSubmitted) return `<div class="page card card-gold" style="text-align:center;padding:40px;max-width:480px;margin:40px auto;">
+    <span class="success-icon">🐯</span>
+    <h3 style="color:var(--gold);font-size:24px;margin-bottom:10px;">Vote Submitted!</h3>
+    <p style="color:var(--muted);margin-bottom:22px;">Your vote for <strong style="color:var(--gold);">${openMatch.label}</strong> has been recorded.</p>
+    <button class="btn btn-dark" onclick="navigate('home')">Back to Home</button>
+  </div>`;
+
+  let html = `<div class="page">
+  <h2 style="color:var(--gold);font-size:26px;margin-bottom:16px;letter-spacing:2px;">Cast Your Vote</h2>
+  <div class="card card-highlight flex-row" style="margin-bottom:16px;gap:14px;">
+    <div>
+      <div style="color:var(--gold);font-weight:600;font-size:17px;">${openMatch.label}</div>
+      <div style="color:var(--muted);font-size:13px;">${openMatch.date}</div>
+    </div>
+  </div>`;
+
+  // Step 1: identify
+  if (state.voterStep === 1) {
+    html += `<div class="card" style="max-width:480px;">
+      <div class="sec">Step 1 of 2 · Who are you?</div>
+      <p style="color:var(--muted);font-size:13px;margin-bottom:16px;">Select your name to prevent duplicate votes.</p>
+      <select class="input" id="voterSelect" style="margin-bottom:14px;" onchange="onVoterSelect(this.value)">
+        <option value="">— Select your name —</option>
+        ${PLAYERS.map(p=>`<option value="${p.id}" ${state.voterPlayerId===p.id?'selected':''}>${p.first} ${p.last}</option>`).join('')}
+      </select>
+      <div id="voterNextArea"></div>
+    </div>`;
+  }
+
+  // Step 2: pick
+  if (state.voterStep === 2) {
+    const eligible = PLAYERS.filter(p => p.id !== state.voterPlayerId);
+    const slotLabels = ["🥇 1st — 3 Points","🥈 2nd — 2 Points","🥉 3rd — 1 Point"];
+    const slotCls = ["s1","s2","s3"];
+
+    html += `<div class="sec">Step 2 of 2 · Select your top 3 performers</div>
+    <div class="pick-slots">`;
+    [0,1,2].forEach(i => {
+      const filled = state.picks[i] !== null;
+      html += `<div class="pick-slot ${filled ? slotCls[i]+' filled' : ''}">
+        <span class="pick-slot-label">${slotLabels[i]}${filled ? ': '+pName(state.picks[i]) : ''}</span>
+        ${filled ? `<button class="btn btn-dark btn-sm" onclick="clearPick(${i})">✕</button>` : ''}
+      </div>`;
+    });
+    html += `</div>`;
+
+    if (state.voteError) html += `<div class="err">${state.voteError}</div>`;
+
+    html += `<div class="sec">Click a player to assign to next available slot:</div>
+    <div class="player-grid" style="margin-bottom:20px;">`;
+    eligible.forEach(p => {
+      const idx = state.picks.indexOf(p.id);
+      const cls = idx===0?'p1':idx===1?'p2':idx===2?'p3':'';
+      const badge = idx===0?'🥇':idx===1?'🥈':idx===2?'🥉':'';
+      html += `<button class="player-btn ${cls}" onclick="togglePick(${p.id})">${badge?badge+' ':''}${p.first} ${p.last}</button>`;
+    });
+    html += `</div>
+    <div class="flex-row">
+      <button class="btn btn-gold" style="font-size:15px;padding:12px 28px;" onclick="doSubmitVote(${openMatch.id})">Submit Vote</button>
+      <button class="btn btn-dark" onclick="state.voterStep=1;render()">← Back</button>
+    </div>`;
+  }
+
+  html += `</div>`;
+  return html;
+}
+
+// ── RESULTS ───────────────────────────────────────────────────────────────────
+function renderResults(resultMatches) {
+  let html = `<div class="page"><h2 style="color:var(--gold);font-size:26px;margin-bottom:16px;letter-spacing:2px;">Match Results</h2>`;
+  if (!resultMatches.length) return html + `<div class="card" style="color:var(--muted);">No results posted yet.</div></div>`;
+
+  html += `<div class="flex-row" style="margin-bottom:20px;">`;
+  resultMatches.forEach(m => {
+    html += `<button class="btn ${state.resultsMatchId===m.id?'btn-gold':'btn-dark'}" onclick="showResults(${m.id})">${m.label}</button>`;
+  });
+  html += `</div>`;
+
+  if (state.resultsMatchId) {
+    html += `<div id="results-content"><div class="loading"><span class="spinner"></span></div></div>`;
+  }
+
+  html += `</div>`;
+  return html;
+}
+
+async function showResults(matchId) {
+  state.resultsMatchId = matchId;
+  render();
+  const el = document.getElementById("results-content");
+  if (!el) return;
+  const votes = await loadVotes(matchId);
+  const m = state.matches.find(x=>x.id===matchId);
+  const { pro } = computeScores(votes);
+  const top5 = Object.entries(pro).map(([id,score])=>({id:parseInt(id),score}))
+    .sort((a,b)=>b.score-a.score).slice(0,5).filter(x=>x.score>0);
+  const ordinals = ["1st","2nd","3rd","4th","5th"];
+  let html = `<div class="card card-gold" style="max-width:520px;">
+    <div style="border-bottom:1px solid var(--gold-dim);padding-bottom:14px;margin-bottom:18px;">
+      <h3 style="color:var(--gold);font-size:20px;">${m.label}</h3>
+      <div style="color:var(--muted);font-size:13px;">${m.date} · ${votes.length} vote${votes.length!==1?'s':''} cast</div>
+    </div>
+    <div style="display:grid;gap:14px;">`;
+  top5.forEach((entry,i) => {
+    html += `<div style="display:flex;align-items:center;gap:14px;">
+      <div class="rank rank-${i+1}">${i+1}</div>
+      <div>
+        <div style="font-family:'Oswald',sans-serif;font-weight:600;font-size:18px;color:${i===0?'var(--gold)':'var(--text)'};">${pName(entry.id)}</div>
+        <div style="font-size:12px;color:var(--muted);">${ordinals[i]} Place</div>
+      </div>
+    </div>`;
+  });
+  html += `</div></div>`;
+  el.innerHTML = html;
+}
+
+// ── ADMIN ─────────────────────────────────────────────────────────────────────
+function renderAdmin(openMatch) {
+  if (!state.adminLoggedIn) return `<div class="page" style="max-width:360px;margin:60px auto 0;">
+    <div class="card" style="text-align:center;padding:32px;">
+      <h2 style="color:var(--gold);font-size:22px;margin:16px 0 6px;letter-spacing:2px;">Admin Access</h2>
+      <p style="color:var(--muted);font-size:13px;margin-bottom:20px;">Enter password to continue</p>
+      <input type="password" class="input" id="adminPwInput" placeholder="Password" value="${state.adminPw}"
+        oninput="state.adminPw=this.value" onkeydown="if(event.key==='Enter')doAdminLogin()"
+        style="margin-bottom:10px;"/>
+      ${state.adminPwError?`<div class="err">Incorrect password.</div>`:''}
+      <button class="btn btn-gold" style="width:100%;margin-top:8px;" onclick="doAdminLogin()">Login</button>
+    </div>
+  </div>`;
+
+  let html = `<div class="page">
+  <div class="flex-row" style="justify-content:space-between;margin-bottom:20px;">
+    <h2 style="color:var(--gold);font-size:26px;letter-spacing:2px;">Admin Panel</h2>
+    <div class="flex-row" style="gap:6px;">
+      <button class="btn ${state.adminTab==='matches'?'btn-gold':'btn-dark'}" onclick="setAdminTab('matches')">Matches</button>
+      <button class="btn ${state.adminTab==='summary'?'btn-gold':'btn-dark'}" onclick="setAdminTab('summary')">Summary</button>
+      <button class="btn btn-dark" onclick="doAdminLogout()">Logout</button>
+    </div>
+  </div>`;
+
+  if (state.adminTab === "matches" && !state.detailMatchId) {
+    html += `<div class="card" style="margin-bottom:20px;">
+      <div class="sec">Create New Match</div>
+      <div class="grid-2" style="align-items:end;gap:10px;">
+        <div><label style="font-size:11px;color:#555;letter-spacing:1px;display:block;margin-bottom:4px;">MATCH LABEL</label>
+          <input class="input" id="newLabel" placeholder="e.g. vs Riverside FC" value="${state.newLabel}" oninput="state.newLabel=this.value"/></div>
+        <div><label style="font-size:11px;color:#555;letter-spacing:1px;display:block;margin-bottom:4px;">DATE</label>
+          <input class="input" type="date" id="newDate" value="${state.newDate}" oninput="state.newDate=this.value"/></div>
+      </div>
+      <button class="btn btn-gold" style="margin-top:12px;" onclick="doCreateMatch()">+ Create &amp; Open</button>
+      <div style="font-size:12px;color:#444;margin-top:6px;">Creating a match will close any currently open match.</div>
+    </div>
+    <div class="sec">All Matches</div>`;
+
+    if (!state.matches.length) { html += `<div class="card" style="color:var(--muted);">No matches yet.</div>`; }
+    else {
+      state.matches.forEach(m => {
+        html += `<div class="card flex-row" style="justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px;">
+          <div style="flex:1;">
+            <span style="color:var(--text);font-weight:600;margin-right:8px;">${m.label}</span>
+            <span style="color:#555;font-size:13px;margin-right:8px;">${m.date}</span>
+            <span class="tag tag-${m.status}">${m.status}</span>
+          </div>
+          <div class="flex-row" style="gap:5px;">
+            ${m.status!=='open'?`<button class="btn btn-green btn-sm" onclick="doSetStatus(${m.id},'open')">Open</button>`:''}
+            ${m.status==='open'?`<button class="btn btn-dark btn-sm" onclick="doSetStatus(${m.id},'closed')">Close</button>`:''}
+            ${m.status==='closed'?`<button class="btn btn-gold btn-sm" onclick="doSetStatus(${m.id},'results')">Post Results</button>`:''}
+            ${m.status==='results'?`<button class="btn btn-dark btn-sm" onclick="doSetStatus(${m.id},'closed')">Hide Results</button>`:''}
+            <button class="btn btn-dark btn-sm" onclick="openDetail(${m.id})">Detail</button>
+            <button class="btn btn-red btn-sm" onclick="doDeleteMatch(${m.id})">Delete</button>
+          </div>
+        </div>`;
+      });
+    }
+  }
+
+  if (state.adminTab === "matches" && state.detailMatchId) {
+    const m = state.matches.find(x=>x.id===state.detailMatchId);
+    html += `<button class="btn btn-dark btn-sm" style="margin-bottom:16px;" onclick="closeDetail()">← Back</button>`;
+    if (m) {
+      html += `<h3 style="color:var(--gold);font-size:20px;margin-bottom:4px;">${m.label} <span class="tag tag-${m.status}">${m.status}</span></h3>
+        <div style="color:var(--muted);font-size:13px;margin-bottom:20px;">${m.date}</div>`;
+    }
+    const votes = state.votes;
+    if (votes.length > 0) {
+      const { raw, pro } = computeScores(votes);
+      const sorted = Object.entries(raw).map(([id,r])=>({id:parseInt(id),raw:r,pro:pro[id]}))
+        .filter(x=>x.raw>0).sort((a,b)=>b.raw-a.raw);
+      html += `<div class="card" style="margin-bottom:16px;">
+        <div class="sec">Scores (Admin View)</div>
+        <table><thead><tr><th>#</th><th>Player</th><th>Raw Points</th><th>Prorated</th></tr></thead><tbody>`;
+      sorted.forEach((x,i) => {
+        html += `<tr><td style="color:var(--muted);">${i+1}</td><td style="color:${i<3?'var(--gold)':'#ccc'};">${pName(x.id)}</td><td>${x.raw}</td><td>${x.pro.toFixed(3)}</td></tr>`;
+      });
+      html += `</tbody></table></div>`;
+    }
+    html += `<div class="card"><div class="sec">Who Voted For Whom</div>`;
+    if (!votes.length) { html += `<div style="color:var(--muted);font-size:13px;">No votes yet.</div>`; }
+    else {
+      html += `<table><thead><tr><th>Voter</th><th>1st (3pts)</th><th>2nd (2pts)</th><th>3rd (1pt)</th></tr></thead><tbody>`;
+      votes.forEach(v => {
+        html += `<tr>
+          <td style="color:var(--gold);">${v.voter_first} ${v.voter_last}</td>
+          <td>${v.pick1_player_id?pName(v.pick1_player_id):'-'}</td>
+          <td>${v.pick2_player_id?pName(v.pick2_player_id):'-'}</td>
+          <td>${v.pick3_player_id?pName(v.pick3_player_id):'-'}</td>
+        </tr>`;
+      });
+      html += `</tbody></table>`;
+    }
+    html += `</div>`;
+  }
+
+  if (state.adminTab === "summary") {
+    html += `<div class="flex-row" style="justify-content:space-between;margin-bottom:16px;">
+      <div class="sec" style="margin:0;">All Votes by Round</div>
+      <button class="btn btn-gold btn-sm" onclick="exportCSV()">Export to Excel (CSV)</button>
+    </div>`;
+    if (!state.matches.length) { html += `<div class="card" style="color:var(--muted);">No data yet.</div>`; }
+    else {
+      const allVotes = state.votes;
+      state.matches.forEach(m => {
+        const mv = allVotes.filter(v=>v.match_id===m.id);
+        html += `<div class="card" style="margin-bottom:10px;">
+          <div class="flex-row" style="justify-content:space-between;${mv.length>0?'margin-bottom:12px;':''}">
+            <div><span style="color:var(--gold);font-weight:600;">${m.label}</span>
+              <span style="color:#444;font-size:12px;margin-left:8px;">${m.date}</span>
+              <span class="tag tag-${m.status}" style="margin-left:6px;">${m.status}</span></div>
+            <div style="color:var(--muted);font-size:13px;">${mv.length} voter${mv.length!==1?'s':''}</div>
+          </div>`;
+        if (mv.length > 0) {
+          html += `<table><thead><tr><th>Voter</th><th>1st</th><th>2nd</th><th>3rd</th></tr></thead><tbody>`;
+          mv.forEach(v => {
+            html += `<tr><td style="color:var(--gold);">${v.voter_first} ${v.voter_last}</td>
+              <td>${v.pick1_player_id?pName(v.pick1_player_id):'-'}</td>
+              <td>${v.pick2_player_id?pName(v.pick2_player_id):'-'}</td>
+              <td>${v.pick3_player_id?pName(v.pick3_player_id):'-'}</td></tr>`;
+          });
+          html += `</tbody></table>`;
+        }
+        html += `</div>`;
+      });
+    }
+  }
+
+  html += `</div>`;
+  return html;
+}
+
+// ── Event handlers ────────────────────────────────────────────────────────────
+function bindEvents() {
+  // auto-check voter step 1 area after render
+  if (state.view === "vote" && state.voterStep === 1 && state.voterPlayerId) {
+    const area = document.getElementById("voterNextArea");
+    if (area) renderVoterNextArea(area);
+  }
+}
+
+async function onVoterSelect(val) {
+  if (!val) { state.voterPlayerId = null; state.voterFirst = ""; state.voterLast = ""; }
+  else {
+    const id = parseInt(val);
+    const p = PLAYERS.find(x=>x.id===id);
+    state.voterPlayerId = id; state.voterFirst = p.first; state.voterLast = p.last;
+  }
+  const area = document.getElementById("voterNextArea");
+  if (area && state.voterPlayerId) renderVoterNextArea(area);
+}
+
+async function renderVoterNextArea(area) {
+  area.innerHTML = `<div class="loading" style="padding:8px 0;text-align:left;"><span class="spinner"></span> Checking...</div>`;
+  const openMatch = state.matches.find(m=>m.status==="open");
+  if (!openMatch) return;
+  const already = await hasVoted(openMatch.id, state.voterFirst, state.voterLast);
+  if (already) {
+    area.innerHTML = `<div class="err">You have already voted for this match.</div>`;
+  } else {
+    area.innerHTML = `<button class="btn btn-gold" onclick="state.voterStep=2;render()">Continue →</button>`;
+  }
+}
+
+function togglePick(playerId) {
+  const idx = state.picks.indexOf(playerId);
+  if (idx >= 0) { state.picks[idx] = null; }
+  else {
+    const next = state.picks.indexOf(null);
+    if (next === -1) return;
+    state.picks[next] = playerId;
+  }
+  render();
+}
+
+function clearPick(i) { state.picks[i] = null; render(); }
+
+async function doSubmitVote(matchId) {
+  if (state.picks.some(p=>p===null)) { state.voteError = "Please select all three picks."; render(); return; }
+  if (new Set(state.picks).size < 3) { state.voteError = "Each pick must be a different player."; render(); return; }
+  const btn = document.querySelector(".btn-gold[onclick^='doSubmitVote']");
+  if (btn) { btn.disabled = true; btn.innerHTML = `<span class="spinner"></span> Submitting...`; }
+  const err = await submitVoteDB(matchId, state.voterFirst, state.voterLast, state.picks[0], state.picks[1], state.picks[2]);
+  if (err) { state.voteError = "Error submitting vote. Please try again."; render(); return; }
+  state.voteSubmitted = true; render();
+}
+
+function doAdminLogin() {
+  if (state.adminPw === ADMIN_PW) { state.adminLoggedIn = true; state.adminPwError = false; navigate("admin"); }
+  else { state.adminPwError = true; state.adminPw = ""; render(); }
+}
+function doAdminLogout() { state.adminLoggedIn = false; navigate("home"); }
+function setAdminTab(tab) { state.adminTab = tab; state.detailMatchId = null; navigate("admin"); }
+
+async function doCreateMatch() {
+  const label = document.getElementById("newLabel")?.value?.trim() || state.newLabel;
+  const date = document.getElementById("newDate")?.value || state.newDate;
+  if (!label || !date) { toast("Please fill in both match label and date."); return; }
+  await createMatch(label, date);
+  state.newLabel = ""; state.newDate = "";
+  toast("Match created and opened!");
+  navigate("admin");
+}
+
+async function doSetStatus(id, status) {
+  await setMatchStatus(id, status);
+  toast(`Match ${status === 'open' ? 'opened' : status === 'closed' ? 'closed' : 'results posted'}!`);
+  navigate("admin");
+}
+
+async function doDeleteMatch(id) {
+  if (!confirm("Delete this match and all its votes? This cannot be undone.")) return;
+  await deleteMatch(id);
+  toast("Match deleted.");
+  navigate("admin");
+}
+
+async function openDetail(id) {
+  state.detailMatchId = id;
+  state.adminTab = "matches";
+  state.loading = true; render();
+  state.votes = await loadVotes(id);
+  state.loading = false; render();
+}
+
+function closeDetail() { state.detailMatchId = null; navigate("admin"); }
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+navigate("home");
+</script>
+
+<footer style="border-top:1px solid #1a1a1a;padding:16px;text-align:center;margin-top:40px;">
+  <span style="font-size:12px;color:#333;">GRFC O45 D2 · Player of the Match · 🐯</span>
+</footer>
+</body>
+</html>
