@@ -287,9 +287,10 @@ function computeScores(votes) {
     if (v.pick2_player_id) raw[v.pick2_player_id] = (raw[v.pick2_player_id]||0) + 2;
     if (v.pick3_player_id) raw[v.pick3_player_id] = (raw[v.pick3_player_id]||0) + 1;
   });
-  const totalVoters = votes.length;
+  // Prorate so total points always = 26 players x 6 points = 156
+  const TOTAL_POINTS = 156;
   const sumRaw = Object.values(raw).reduce((a,b)=>a+b,0);
-  const factor = sumRaw > 0 ? totalVoters / sumRaw : 0;
+  const factor = sumRaw > 0 ? TOTAL_POINTS / sumRaw : 0;
   const pro = {};
   Object.keys(raw).forEach(id => pro[id] = raw[id] * factor);
   return { raw, pro };
@@ -577,15 +578,20 @@ function renderAdmin(openMatch) {
       <div class="sec">Create New Match</div>
       <div class="grid-2" style="align-items:end;gap:10px;">
         <div><label style="font-size:11px;color:#555;letter-spacing:1px;display:block;margin-bottom:4px;">MATCH LABEL</label>
-          <input class="input" id="newLabel" placeholder="e.g. vs Riverside FC" value="${state.newLabel}" oninput="state.newLabel=this.value"/></div>
+          <input class="input" id="newLabel" placeholder="e.g. vs Riverside FC" value="${state.newLabel}" oninput="state.newLabel=this.value" onchange="state.newLabel=this.value"/></div>
         <div><label style="font-size:11px;color:#555;letter-spacing:1px;display:block;margin-bottom:4px;">DATE</label>
-          <input class="input" type="date" id="newDate" value="${state.newDate}" oninput="state.newDate=this.value"/></div>
+          <input class="input" type="date" id="newDate" value="${state.newDate}" oninput="state.newDate=this.value" onchange="state.newDate=this.value"/></div>
       </div>
       <button class="btn btn-gold" style="margin-top:12px;" onclick="doCreateMatch()">+ Create &amp; Open</button>
+      <div id="createError" style="font-size:13px;color:#e74c3c;margin-top:6px;display:none;"></div>
       <div style="font-size:12px;color:#444;margin-top:6px;">Creating a match will close any currently open match.</div>
     </div>
     <div class="sec">All Matches</div>`;
 
+    html += `<div id="rls-banner" style="background:#1a0a00;border:1px solid #f5c80044;border-radius:4px;padding:12px 16px;margin-bottom:16px;font-size:13px;color:#aaa;display:none;">
+      <strong style="color:var(--gold);">⚠️ Database write error detected.</strong> You may need to disable Row Level Security in Supabase.<br/>
+      Go to <strong style="color:#f5c800;">Supabase → Table Editor → matches → RLS</strong> and click <strong style="color:#f5c800;">Disable RLS</strong> for both the <code>matches</code> and <code>votes</code> tables.
+    </div>`;
     if (!state.matches.length) { html += `<div class="card" style="color:var(--muted);">No matches yet.</div>`; }
     else {
       state.matches.forEach(m => {
@@ -744,24 +750,51 @@ function doAdminLogout() { state.adminLoggedIn = false; navigate("home"); }
 function setAdminTab(tab) { state.adminTab = tab; state.detailMatchId = null; navigate("admin"); }
 
 async function doCreateMatch() {
-  const label = document.getElementById("newLabel")?.value?.trim() || state.newLabel;
-  const date = document.getElementById("newDate")?.value || state.newDate;
-  if (!label || !date) { toast("Please fill in both match label and date."); return; }
-  await createMatch(label, date);
+  // Always read live from DOM first, fall back to state
+  const labelEl = document.getElementById("newLabel");
+  const dateEl = document.getElementById("newDate");
+  const label = (labelEl?.value || state.newLabel || "").trim();
+  const date = dateEl?.value || state.newDate || "";
+  if (!label) { toast("⚠️ Please enter a match label."); return; }
+  if (!date) { toast("⚠️ Please select a date."); return; }
+  // Disable button to prevent double-submit
+  const btn = document.querySelector("[onclick='doCreateMatch()']");
+  if (btn) { btn.disabled = true; btn.textContent = "Creating..."; }
+  const { error } = await sb.from("matches").select("id").limit(1); // connectivity check
+  if (error) { toast("❌ Cannot reach database: " + error.message); if (btn) { btn.disabled=false; btn.textContent="+ Create & Open"; } return; }
+  // Close any open matches
+  const { error: closeErr } = await sb.from("matches").update({ status: "closed" }).eq("status", "open");
+  if (closeErr) console.warn("Close error:", closeErr.message);
+  // Insert new match
+  const { error: insertErr } = await sb.from("matches").insert({ label, date, status: "open" });
+  if (insertErr) {
+    toast("❌ Error: " + insertErr.message);
+    const rlsB = document.getElementById("rls-banner"); if (rlsB) rlsB.style.display="block";
+    if (btn) { btn.disabled=false; btn.textContent="+ Create & Open"; }
+    return;
+  }
   state.newLabel = ""; state.newDate = "";
-  toast("Match created and opened!");
+  toast("✅ Match created and opened!");
   navigate("admin");
 }
 
 async function doSetStatus(id, status) {
-  await setMatchStatus(id, status);
-  toast(`Match ${status === 'open' ? 'opened' : status === 'closed' ? 'closed' : 'results posted'}!`);
+  if (status === "open") {
+    const { error: e } = await sb.from("matches").update({ status: "closed" }).eq("status", "open");
+    if (e) { toast("Error: " + e.message); return; }
+  }
+  const { error } = await sb.from("matches").update({ status }).eq("id", id);
+  if (error) { toast("Error: " + error.message); return; }
+  toast("Done: match " + status + "!");
   navigate("admin");
 }
 
 async function doDeleteMatch(id) {
   if (!confirm("Delete this match and all its votes? This cannot be undone.")) return;
-  await deleteMatch(id);
+  const { error: e1 } = await sb.from("votes").delete().eq("match_id", id);
+  if (e1) { toast("Error: " + e1.message); return; }
+  const { error: e2 } = await sb.from("matches").delete().eq("id", id);
+  if (e2) { toast("Error: " + e2.message); return; }
   toast("Match deleted.");
   navigate("admin");
 }
